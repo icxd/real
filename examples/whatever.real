@@ -1,0 +1,54 @@
+module Folder.Subfolder.Whatever
+
+import Folder.Subfolder.OtherModule
+
+external data MyExternalData(a: Int, b: Int)
+
+alias Error = String
+
+data Result[R, E <: Error] =
+    | Ok(R)
+    | Err(E)
+
+internal data MyData = 
+    | A(Int, Int)
+    | B(Int, Int)
+    | C(Int, Int)
+
+data Whatever =
+    | A
+    | B
+    | C
+
+public const MyObject: MyData = MyData.A(1, 2)
+
+private alias Predicate[T] = (T) -> Bool
+
+internal object ParentObject =
+    | virtual procedure ExampleProcedure() -> Unit =
+        println("Hi from parent!")
+
+object MyGenericObject[T, U] : ParentObject =
+    | override procedure ExampleProcedure() -> Unit =
+        println("Hi from child!")
+    | public procedure MyPublicProcedure(whatever: Whatever) -> Int =
+        match whatever with
+            | A -> 1
+            | B -> 2
+            | C -> 3
+
+object MyImplementsGenericObject[T <: String | Int]
+object MyExtendsGenericObject[T >: String, U >: Int]
+
+data MyStruct(a: Int, b: Int)
+
+public procedure MyProcedure(a: MyData) -> Unit = 
+    match a with
+        | A(x, y) -> println(x + y)
+        | B(x, y) -> println(x - y)
+        | C(x, y) -> println(x * y)
+        | else -> println("No match")
+
+
+
+
