@@ -38,6 +38,67 @@ fn get_module_path(expression: Expression) -> String {
     }
 }
 
+#[derive(Debug, Clone)]
+struct Constants {
+    utf8: HashMap<String, u16>,
+    class: HashMap<String, u16>,
+    name_and_type: HashMap<(String, String), u16>,
+    method_ref: HashMap<(String, String, String), u16>,
+    field_ref: HashMap<(String, String, String), u16>,
+}
+
+impl Constants {
+    fn new() -> Constants {
+        Constants {
+            utf8: HashMap::new(),
+            class: HashMap::new(),
+            name_and_type: HashMap::new(),
+            method_ref: HashMap::new(),
+            field_ref: HashMap::new(),
+        }
+    }
+    fn add_utf8(&mut self, value: &str) -> u16 {
+        if self.utf8.contains_key(value) {
+            return *self.utf8.get(value).unwrap();
+        }
+        let index = self.utf8.len() as u16 + 1;
+        self.utf8.insert(value.to_string(), index);
+        index
+    }
+    fn add_class(&mut self, value: &str) -> u16 {
+        if self.class.contains_key(value) {
+            return *self.class.get(value).unwrap();
+        }
+        let index = self.class.len() as u16 + 1;
+        self.class.insert(value.to_string(), index);
+        index
+    }
+    fn add_name_and_type(&mut self, name: &str, descriptor: &str) -> u16 {
+        if self.name_and_type.contains_key(&(name.to_string(), descriptor.to_string())) {
+            return *self.name_and_type.get(&(name.to_string(), descriptor.to_string())).unwrap();
+        }
+        let index = self.name_and_type.len() as u16 + 1;
+        self.name_and_type.insert((name.to_string(), descriptor.to_string()), index);
+        index
+    }
+    fn add_method_ref(&mut self, class: &str, name: &str, descriptor: &str) -> u16 {
+        if self.method_ref.contains_key(&(class.to_string(), name.to_string(), descriptor.to_string())) {
+            return *self.method_ref.get(&(class.to_string(), name.to_string(), descriptor.to_string())).unwrap();
+        }
+        let index = self.method_ref.len() as u16 + 1;
+        self.method_ref.insert((class.to_string(), name.to_string(), descriptor.to_string()), index);
+        index
+    }
+    fn add_field_ref(&mut self, class: &str, name: &str, descriptor: &str) -> u16 {
+        if self.field_ref.contains_key(&(class.to_string(), name.to_string(), descriptor.to_string())) {
+            return *self.field_ref.get(&(class.to_string(), name.to_string(), descriptor.to_string())).unwrap();
+        }
+        let index = self.field_ref.len() as u16 + 1;
+        self.field_ref.insert((class.to_string(), name.to_string(), descriptor.to_string()), index);
+        index
+    }
+}
+
 fn main() {
     let mut args = std::env::args().skip(1);
     let filepath: String = args.next().unwrap();
