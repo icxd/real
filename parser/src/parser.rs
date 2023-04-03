@@ -5,9 +5,9 @@ use lexer::{
 };
 
 #[derive(Debug, Clone)] pub struct MatchCase {
-    condition: Vec<Expression>,
-    body: Vec<Statement>,
-    span: Span,
+    pub condition: Vec<Expression>,
+    pub body: Vec<Statement>,
+    pub span: Span,
 }
 #[derive(Debug, Clone)] pub struct Parser {
     tokens: Vec<Token>,
@@ -51,7 +51,7 @@ use lexer::{
 #[derive(Debug, Clone, PartialEq)] pub enum Type {
     Unit(Span),
     Int(Span),
-    String(Span),
+    // String(Span),
     Bool(Span),
 
     GenericParameter(String, Span),
@@ -84,6 +84,7 @@ use lexer::{
     
     Module(Expression, Span),
     Import(Expression, Span),
+    ImportExposing(Expression, Vec<String>, Span),
 
     Expression(Expression, Span),
 }
@@ -468,8 +469,30 @@ impl Parser {
         self.expect(TokenKind::Import);
         let span: Span = self.current().span;
         let expr: Expression = self.parse_expression();
+        let mut exposed: Vec<String> = vec![];
+        if self.current().kind == TokenKind::Exposing {
+            self.expect(TokenKind::Exposing);
+            self.expect(TokenKind::OpenParenthesis);
+            while self.current().kind != TokenKind::CloseParenthesis {
+                if self.current().kind == TokenKind::Newline {
+                    self.expect(TokenKind::Newline);
+                }
+                exposed.push(self.expect(TokenKind::Identifier).literal.unwrap());
+                if self.current().kind == TokenKind::Comma {
+                    self.expect(TokenKind::Comma);
+                }
+                if self.current().kind == TokenKind::Newline {
+                    self.expect(TokenKind::Newline);
+                }
+            }
+            self.expect(TokenKind::CloseParenthesis);
+        }
         self.expect(TokenKind::Newline);
-        Statement::Import(expr, span)
+        if exposed.len() > 0 {
+            Statement::ImportExposing(expr, exposed, span)
+        } else {
+            Statement::Import(expr, span)
+        }
     }
 
     fn parse_expression(&mut self) -> Expression {
@@ -668,10 +691,10 @@ impl Parser {
                 self.expect(TokenKind::Int);
                 Type::Int(span)
             }
-            TokenKind::String => {
-                self.expect(TokenKind::String);
-                Type::String(span)
-            }
+            // TokenKind::String => {
+            //     self.expect(TokenKind::String);
+            //     Type::String(span)
+            // }
             TokenKind::Bool => {
                 self.expect(TokenKind::Bool);
                 Type::Bool(span)

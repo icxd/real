@@ -1,0 +1,3 @@
+module Data.List
+
+public object List[T]

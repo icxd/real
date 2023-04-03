@@ -1,12 +1,14 @@
 module Folder.Subfolder.Whatever
 
-import Folder.Subfolder.OtherModule
+import Data.String
+import Data.Enum
+import Data.Function
 
-external data MyExternalData(a: Int, b: Int)
+// external "stdio.h" procedure printf(fmt: c_string, ...) -> Int
 
 alias Error = String
 
-data Result[R, E <: Error] =
+data Result[R, E >: Error] =
     | Ok(R)
     | Err(E)
 
@@ -31,22 +33,21 @@ internal object ParentObject =
 object MyGenericObject[T, U] : ParentObject =
     | override procedure ExampleProcedure() -> Unit =
         println("Hi from child!")
-    | public procedure MyPublicProcedure(whatever: Whatever) -> Int =
+    | private procedure MyPrivateProcedure(whatever: Whatever) -> Int =
         match whatever with
             | A -> 1
             | B -> 2
             | C -> 3
 
-object MyImplementsGenericObject[T <: String | Int]
-object MyExtendsGenericObject[T >: String, U >: Int]
+object MyExtendsGenericObject[T, U >: String]
 
 data MyStruct(a: Int, b: Int)
 
 public procedure MyProcedure(a: MyData) -> Unit = 
     match a with
-        | A(x, y) -> println(x + y)
-        | B(x, y) -> println(x - y)
-        | C(x, y) -> println(x * y)
+        | A(x, y) -> println("%d", x + y)
+        | B(x, y) -> println("%d", x - y)
+        | C(x, y) -> println("%d", x * y)
         | else -> println("No match")
 
 

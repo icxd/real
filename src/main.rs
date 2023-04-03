@@ -13,6 +13,7 @@ use vm::{
     Field,
     Method
 };
+use codegen::Codegen;
 
 fn hexdump(data: &[u8], width: usize, sep: char, offset: usize) -> String {
     let mut lines = Vec::new();
@@ -122,65 +123,71 @@ fn main() {
         println!("{:?}", statement);
     }
 
-    let mut module_path: String = String::new();
-    for statement in statements.clone() {
-        match statement {
-            Statement::Module(expression, _) => {
-                module_path = get_module_path(expression);
-            }
-            _ => {}
-        }
-    }
+    let mut codegen: Codegen = Codegen::new(filepath.clone().split('/').last().unwrap().to_string(), statements.clone());
+    let cpp_code: String = codegen.codegen_cpp();
+    let header_code: String = codegen.codegen_header();
+    std::fs::write(filepath.clone().replace(".real", ".cpp"), cpp_code).unwrap();
+    std::fs::write(filepath.clone().replace(".real", ".h"), header_code).unwrap();
 
-    println!("Module path: {}", module_path);
+    // let mut module_path: String = String::new();
+    // for statement in statements.clone() {
+    //     match statement {
+    //         Statement::Module(expression, _) => {
+    //             module_path = get_module_path(expression);
+    //         }
+    //         _ => {}
+    //     }
+    // }
 
-    const CLASS_ACC_PUBLIC: u16 = 0x0001;
-    const CLASS_ACC_FINAL: u16 = 0x0010;
-    const CLASS_ACC_SUPER: u16 = 0x0020;
-    const CLASS_ACC_INTERFACE: u16 = 0x0200;
-    const CLASS_ACC_ABSTRACT: u16 = 0x0400;
-    const CLASS_ACC_SYNTHETIC: u16 = 0x1000;
-    const CLASS_ACC_ANNOTATION: u16 = 0x2000;
-    const CLASS_ACC_ENUM: u16 = 0x4000;
+    // println!("Module path: {}", module_path);
 
-    let mut class_file: ClassFile = ClassFile {
-        magic: 0xCAFEBABE,
-        minor_version: 0,
-        major_version: 52,
-        constant_pool: vec![],
-        access_flags: 0x00,
-        this_class: 7,
-        super_class: 2,
-        interfaces: vec![],
-        fields: vec![],
-        methods: vec![],
-        attributes: vec![],
-    };
+    // const CLASS_ACC_PUBLIC: u16 = 0x0001;
+    // const CLASS_ACC_FINAL: u16 = 0x0010;
+    // const CLASS_ACC_SUPER: u16 = 0x0020;
+    // const CLASS_ACC_INTERFACE: u16 = 0x0200;
+    // const CLASS_ACC_ABSTRACT: u16 = 0x0400;
+    // const CLASS_ACC_SYNTHETIC: u16 = 0x1000;
+    // const CLASS_ACC_ANNOTATION: u16 = 0x2000;
+    // const CLASS_ACC_ENUM: u16 = 0x4000;
 
-    class_file.add_method_ref(2, 3);
-    class_file.add_class(4);
-    class_file.add_name_and_type(5, 6);
-    class_file.add_utf8("java/lang/Object");
-    class_file.add_utf8("<init>");
-    class_file.add_utf8("()V");
-    class_file.add_class(8);
-    class_file.add_utf8(module_path.replace(".", "/").as_str());
-    class_file.add_utf8("Code");
-    class_file.add_utf8("LineNumberTable");
-    class_file.add_utf8("SourceFile");
-    class_file.add_utf8(filepath.as_str());
+    // let mut class_file: ClassFile = ClassFile {
+    //     magic: 0xCAFEBABE,
+    //     minor_version: 0,
+    //     major_version: 52,
+    //     constant_pool: vec![],
+    //     access_flags: 0x00,
+    //     this_class: 7,
+    //     super_class: 2,
+    //     interfaces: vec![],
+    //     fields: vec![],
+    //     methods: vec![],
+    //     attributes: vec![],
+    // };
 
-    class_file.add_access_flags(CLASS_ACC_SUPER | CLASS_ACC_PUBLIC);
+    // class_file.add_method_ref(2, 3);
+    // class_file.add_class(4);
+    // class_file.add_name_and_type(5, 6);
+    // class_file.add_utf8("java/lang/Object");
+    // class_file.add_utf8("<init>");
+    // class_file.add_utf8("()V");
+    // class_file.add_class(8);
+    // class_file.add_utf8(module_path.replace(".", "/").as_str());
+    // class_file.add_utf8("Code");
+    // class_file.add_utf8("LineNumberTable");
+    // class_file.add_utf8("SourceFile");
+    // class_file.add_utf8(filepath.as_str());
 
-    class_file.add_attribute(Attribute { attribute_name_index: 11, info: vec![0x00, 0x0c] });
+    // class_file.add_access_flags(CLASS_ACC_SUPER | CLASS_ACC_PUBLIC);
 
-    class_file.add_method(Method {
-        access_flags: CLASS_ACC_PUBLIC,
-        name_index: 5,
-        descriptor_index: 6,
-        attributes: vec![Attribute { attribute_name_index: 9, info: vec![0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x2a, 0xb7, 0x00, 0x01, 0xb1, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01] }]
-    });
+    // class_file.add_attribute(Attribute { attribute_name_index: 11, info: vec![0x00, 0x0c] });
 
-    println!("{}", hexdump(&class_file.to_bytes(), 16, ' ', 0));
-    std::fs::write(filepath.replace(".real", ".class"), class_file.to_bytes()).unwrap();
+    // class_file.add_method(Method {
+    //     access_flags: CLASS_ACC_PUBLIC,
+    //     name_index: 5,
+    //     descriptor_index: 6,
+    //     attributes: vec![Attribute { attribute_name_index: 9, info: vec![0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x2a, 0xb7, 0x00, 0x01, 0xb1, 0x00, 0x00, 0x00, 0x01, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01] }]
+    // });
+
+    // println!("{}", hexdump(&class_file.to_bytes(), 16, ' ', 0));
+    // std::fs::write(filepath.replace(".real", ".class"), class_file.to_bytes()).unwrap();
 }

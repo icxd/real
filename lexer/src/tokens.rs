@@ -26,11 +26,12 @@ pub enum TokenKind {
     Procedure,          // procedure (basically a function)
 
     //   Module Handling
-    Import,             // import (imports a module)
     Module,             // module (defines a module)
+    Import,             // import (imports a module)
+    Exposing,           // exposing (exposes a module)
     
     //   Descriptors
-    External,           // external (marks an object as external)
+    External,           // external (used to define c++ bindings for a module or object)
     Internal,           // internal (makes the object only accessible within the directory of the module)
     Public,             // public (makes the object public to other modules)
     Private,            // private (makes the object only accessible within the module)

@@ -1,0 +1,6 @@
+module Data.String
+
+import Data.List exposing (List)
+import Data.Char exposing (Char)
+
+public alias String = [Char]
