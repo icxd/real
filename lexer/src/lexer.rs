@@ -52,13 +52,15 @@ impl Lexer {
                     let kind: TokenKind = match literal.clone().as_str() {
                         "Unit" => TokenKind::Unit,
                         "Int" => TokenKind::Int,
-                        // "String" => TokenKind::String,
+                        "Char" => TokenKind::Char,
                         "Bool" => TokenKind::Bool,
                         "data" => TokenKind::Data,
                         "alias" => TokenKind::Alias,
                         "object" => TokenKind::Object,
                         "const" => TokenKind::Const,
                         "procedure" => TokenKind::Procedure,
+                        "trait" => TokenKind::Trait,
+                        "of" => TokenKind::Of,
                         "module" => TokenKind::Module,
                         "import" => TokenKind::Import,
                         "exposing" => TokenKind::Exposing,
@@ -68,9 +70,11 @@ impl Lexer {
                         "private" => TokenKind::Private,
                         "virtual" => TokenKind::Virtual,
                         "override" => TokenKind::Override,
+                        "unsafe" => TokenKind::Unsafe,
                         "match" => TokenKind::Match,
                         "with" => TokenKind::With,
                         "else" => TokenKind::Else,
+                        "cpp" => TokenKind::Cpp,
                         _ => TokenKind::Identifier,
                     };
                     self.tokens.push(Token { kind, literal: Some(literal), span: Span { start, end: self.end }})
@@ -93,6 +97,11 @@ impl Lexer {
                     let start: usize = self.start;
                     while self.current() != '"' {
                         literal.push(self.current());
+                        if self.current() == '\\' {
+                            self.start += 1;
+                            self.advance();
+                            literal.push(self.current());
+                        }
                         self.start += 1;
                         self.advance();
                     }
@@ -274,14 +283,5 @@ impl Lexer {
     fn advance(&mut self) -> char {
         self.current += 1;
         self.source.chars().nth(self.current - 1).unwrap()
-    }
-    fn peek(&self) -> char {
-        self.source.chars().nth(self.current + 1).unwrap()
-    }
-    fn peek_next(&self) -> char {
-        self.source.chars().nth(self.current + 2).unwrap()
-    }
-    fn is_at_end(&self) -> bool {
-        self.current >= self.source.len()
     }
 }

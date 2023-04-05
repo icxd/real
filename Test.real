@@ -1,0 +1,8 @@
+module Test
+
+alias Float = Int // only here because i don't have a float type
+
+procedure Add[T >: Int, U >: Int](t: T, u: U) -> T = t + u
+procedure Add[T >: Float, U >: Float](t: T, u: U) -> T = t + u
+procedure Add[T >: Int, U >: Float](t: T, u: U) -> U = t + u
+procedure Add[T >: Float, U >: Int](t: T, u: U) -> T = t + u

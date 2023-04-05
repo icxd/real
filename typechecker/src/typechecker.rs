@@ -1,3 +1,6 @@
+#![deny(dead_code)]
+#![allow(unused)]
+
 use parser::parser::Parser;
 
 #[derive(Debug, Clone)]

@@ -1,3 +1,6 @@
+#![deny(dead_code)]
+#![allow(unused)]
+
 use std::collections::HashMap;
 
 use lexer::tokens::TokenKind;
@@ -38,7 +41,117 @@ impl Codegen {
 
     pub fn codegen_cpp(&mut self) -> String {
         let mut code = String::new();
+        for statement in self.statements.iter() {
+            if let Statement::Expression(Expression::Cpp(cpp, _), _) = statement {
+                if cpp.starts_with("#include") {
+                    code.push_str(cpp.as_str());
+                    code.push_str("\n");
+                }
+            }
+        }
+
         code.push_str(&format!("#include \"{}\"\n", self.filename.replace(".real", ".h")));
+
+        let mut imports: String = String::new();
+        let mut namespaces: String = String::new();
+        let mut usings: String = String::new();
+        for statement in self.statements.clone() {
+            match statement {
+                Statement::Import(path, _) => {
+                    let path = self.get_module_path(path);
+                    let split: Vec<&str> = path.split(".").collect();
+                    // if let Statement::Module(path, _) = self.statements[0].clone() {
+                    //     let mod_path = self.get_module_path(path);
+                    //     let mod_split: Vec<&str> = mod_path.split(".").collect();
+                    //     let mut count = 0;
+                    //     if split.len() > mod_split.len() {
+                    //         for i in 0..mod_split.len() {
+                    //             if split[i] == mod_split[i] {
+                    //                 count += 1;
+                    //             }
+                    //         }
+                    //     } else {
+                    //         for i in 0..split.len() {
+                    //             if split[i] == mod_split[i] {
+                    //                 count += 1;
+                    //             }
+                    //         }
+                    //     }
+                    //     let mut new_path = String::new();
+                    //     for i in count..split.len() {
+                    //         new_path.push_str(&format!("{}.", split[i]));
+                    //     }
+                    //     new_path.pop();
+                    //     let mut file_path: String = new_path.replace(".", "/");
+                    //     file_path.push_str(".h");
+                    //     if !std::path::Path::new(&file_path).exists() {
+                    //         let mut file_path: String = "E:/Dev/rust/real/runtime/".to_string();
+                    //         file_path.push_str(&new_path.replace(".", "/"));
+                    //         file_path.push_str(".h");
+                    //         if !std::path::Path::new(&file_path).exists() {
+                    //             panic!("File {} does not exist", file_path);
+                    //         } else {
+                    //             imports.push_str(&format!("#include \"{}\"\n", file_path));
+                    //         }
+                    //     } else {
+                    //         imports.push_str(&format!("#include \"{}.h\"\n", new_path.replace(".", "/")));
+                    //     }
+                    // }
+                    imports.push_str(&format!("#include <{}.h>\n", path.replace(".", "/")));
+                    namespaces.push_str(&format!("using namespace {};\n", path.replace(".", "::")));
+                }
+                Statement::ImportExposing(path, exposing, _) => {
+                    let path = self.get_module_path(path);
+                    let split: Vec<&str> = path.split(".").collect();
+                    // if let Statement::Module(path, _) = self.statements[0].clone() {
+                    //     let mod_path = self.get_module_path(path);
+                    //     let mod_split: Vec<&str> = mod_path.split(".").collect();
+                    //     let mut count = 0;
+                    //     if split.len() > mod_split.len() {
+                    //         for i in 0..mod_split.len() {
+                    //             if split[i] == mod_split[i] {
+                    //                 count += 1;
+                    //             }
+                    //         }
+                    //     } else {
+                    //         for i in 0..split.len() {
+                    //             if split[i] == mod_split[i] {
+                    //                 count += 1;
+                    //             }
+                    //         }
+                    //     }
+                    //     let mut new_path = String::new();
+                    //     for i in count..split.len() {
+                    //         new_path.push_str(&format!("{}.", split[i]));
+                    //     }
+                    //     new_path.pop();
+                    //     let mut file_path: String = new_path.replace(".", "/");
+                    //     file_path.push_str(".h");
+                    //     if !std::path::Path::new(&file_path).exists() {
+                    //         let mut file_path: String = "E:/Dev/rust/real/runtime/".to_string();
+                    //         file_path.push_str(&new_path.replace(".", "/"));
+                    //         file_path.push_str(".h");
+                    //         if !std::path::Path::new(&file_path).exists() {
+                    //             panic!("File {} does not exist", file_path);
+                    //         } else {
+                    //             imports.push_str(&format!("#include \"{}\"\n", file_path));
+                    //         }
+                    //     } else {
+                    //         imports.push_str(&format!("#include \"{}.h\"\n", new_path.replace(".", "/")));
+                    //     }
+                    // }
+                    imports.push_str(&format!("#include <{}.h>\n", path.replace(".", "/")));
+                    namespaces.push_str(&format!("using namespace {};\n", path.replace(".", "::")));
+                    for expose in exposing {
+                        usings.push_str(&format!("using {}::{};\n", path.replace(".", "::"), expose));
+                    }
+                }
+                _ => {}
+            }
+        }
+        code.push_str(&imports);
+        code.push_str(&namespaces);
+
         let mut namespace_count = 0;
         if let Statement::Module(path, _) = self.statements[0].clone() {
             let path = self.get_module_path(path);
@@ -47,7 +160,11 @@ impl Codegen {
                 code.push_str(&format!("namespace {} {{\n", split[i]));
                 namespace_count += 1;
             }
+        } else {
+            panic!("first statement must be a module.")
         }
+
+        code.push_str(&usings);
 
         for statement in self.statements.clone() {
             code.push_str(&self.get_cpp_statement(statement));
@@ -71,14 +188,88 @@ impl Codegen {
             match statement {
                 Statement::Import(path, _) => {
                     let path = self.get_module_path(path);
-                    let last: &str = path.split(".").last().unwrap();
-                    imports.push_str(&format!("#include \"{}.h\"\n", last));
+                    let split: Vec<&str> = path.split(".").collect();
+                    // if let Statement::Module(path, _) = self.statements[0].clone() {
+                    //     let mod_path = self.get_module_path(path);
+                    //     let mod_split: Vec<&str> = mod_path.split(".").collect();
+                    //     let mut count = 0;
+                    //     if split.len() > mod_split.len() {
+                    //         for i in 0..mod_split.len() {
+                    //             if split[i] == mod_split[i] {
+                    //                 count += 1;
+                    //             }
+                    //         }
+                    //     } else {
+                    //         for i in 0..split.len() {
+                    //             if split[i] == mod_split[i] {
+                    //                 count += 1;
+                    //             }
+                    //         }
+                    //     }
+                    //     let mut new_path = String::new();
+                    //     for i in count..split.len() {
+                    //         new_path.push_str(&format!("{}.", split[i]));
+                    //     }
+                    //     new_path.pop();
+                    //     let mut file_path: String = new_path.replace(".", "/");
+                    //     file_path.push_str(".h");
+                    //     if !std::path::Path::new(&file_path).exists() {
+                    //         let mut file_path: String = "E:/Dev/rust/real/runtime/".to_string();
+                    //         file_path.push_str(&new_path.replace(".", "/"));
+                    //         file_path.push_str(".h");
+                    //         if !std::path::Path::new(&file_path).exists() {
+                    //             panic!("File {} does not exist", file_path);
+                    //         } else {
+                    //             imports.push_str(&format!("#include \"{}\"\n", file_path));
+                    //         }
+                    //     } else {
+                    //         imports.push_str(&format!("#include \"{}.h\"\n", new_path.replace(".", "/")));
+                    //     }
+                    // }
+                    imports.push_str(&format!("#include <{}.h>\n", path.replace(".", "/")));
                     namespaces.push_str(&format!("using namespace {};\n", path.replace(".", "::")));
                 }
                 Statement::ImportExposing(path, exposing, _) => {
                     let path = self.get_module_path(path);
-                    let last: &str = path.split(".").last().unwrap();
-                    imports.push_str(&format!("#include \"{}.h\"\n", last));
+                    let split: Vec<&str> = path.split(".").collect();
+                    // if let Statement::Module(path, _) = self.statements[0].clone() {
+                    //     let mod_path = self.get_module_path(path);
+                    //     let mod_split: Vec<&str> = mod_path.split(".").collect();
+                    //     let mut count = 0;
+                    //     if split.len() > mod_split.len() {
+                    //         for i in 0..mod_split.len() {
+                    //             if split[i] == mod_split[i] {
+                    //                 count += 1;
+                    //             }
+                    //         }
+                    //     } else {
+                    //         for i in 0..split.len() {
+                    //             if split[i] == mod_split[i] {
+                    //                 count += 1;
+                    //             }
+                    //         }
+                    //     }
+                    //     let mut new_path = String::new();
+                    //     for i in count..split.len() {
+                    //         new_path.push_str(&format!("{}.", split[i]));
+                    //     }
+                    //     new_path.pop();
+                    //     let mut file_path: String = new_path.replace(".", "/");
+                    //     file_path.push_str(".h");
+                    //     if !std::path::Path::new(&file_path).exists() {
+                    //         let mut file_path: String = "E:/Dev/rust/real/runtime/".to_string();
+                    //         file_path.push_str(&new_path.replace(".", "/"));
+                    //         file_path.push_str(".h");
+                    //         if !std::path::Path::new(&file_path).exists() {
+                    //             panic!("File {} does not exist", file_path);
+                    //         } else {
+                    //             imports.push_str(&format!("#include \"{}\"\n", file_path));
+                    //         }
+                    //     } else {
+                    //         imports.push_str(&format!("#include \"{}.h\"\n", new_path.replace(".", "/")));
+                    //     }
+                    // }
+                    imports.push_str(&format!("#include <{}.h>\n", path.replace(".", "/")));
                     namespaces.push_str(&format!("using namespace {};\n", path.replace(".", "::")));
                     for expose in exposing {
                         usings.push_str(&format!("using {}::{};\n", path.replace(".", "::"), expose));
@@ -121,14 +312,14 @@ impl Codegen {
     fn get_cpp_statement(&mut self, statement: Statement) -> String {
         let mut code: String = String::new();
         match statement {
-            Statement::Object(name, _, _, members, _) => {
+            Statement::Object(name, _, _, parameters, members, _) => {
                 self.current_class = Some(name.clone());
                 for member in members {
                     code.push_str(&self.get_cpp_statement(member));
                 }
                 self.current_class = None;
             }
-            Statement::GenericObject(name, _, generics, _, members, _) => {
+            Statement::GenericObject(name, _, generics, _, parameters, members, _) => {
                 self.current_class = Some(name.clone());
                 for member in members {
                     code.push_str(&self.get_cpp_statement(member));
@@ -169,6 +360,23 @@ impl Codegen {
                     args_string.pop();
                     args_string.pop();
                 }
+                let mut generics_string = String::new();
+                for generic in generics {
+                    match generic.1 {
+                        GenericType::Extends => {
+                            generics_string.push_str(&format!("typename {} = ", self.get_type(generic.0)));
+                            let extends_type = self.get_type(generic.2.clone()[0].clone());
+                            generics_string.push_str(&format!("{}, ", extends_type));
+                        }
+                        GenericType::Implements => panic!("Implementing generics is not supported yet"),
+                        GenericType::None => {
+                            generics_string.push_str(&format!("typename {}, ", self.get_type(generic.0)));
+                        }
+                    }
+                }
+                generics_string.pop();
+                generics_string.pop();
+                code.push_str(&format!("template <{}>\n", generics_string));
                 code.push_str(&format!("{} {}{}({}) {{\n", self.get_type(return_type.clone()), if self.current_class.is_some() { format!("{}::", self.current_class.clone().unwrap()) } else { String::new() }, name, args_string));
                 if let Expression::Match(_, _, _, _) = expression {
 
@@ -182,6 +390,10 @@ impl Codegen {
                     self.types.remove(name);
                 }
             }
+            Statement::Expression(Expression::Cpp(cpp, _), _) => {
+                code.push_str(cpp.replace("\\\"", "\"").as_str());
+                code.push_str("\n");
+            },
             _ => {}
         }
         code
@@ -319,9 +531,17 @@ impl Codegen {
                 }
                 code.push_str("};\n");
             }
-            Statement::Object(name, _, parent, members, _) => {
+            Statement::Object(name, _, parents, parameters, members, _) => {
                 self.current_class = Some(name.clone());
-                code.push_str(&format!("class {} {}{{\n", name, if parent.is_some() { format!(": public {}", self.get_type(parent.unwrap())) } else { String::new() }));
+                code.push_str(&format!("class {} ", name));
+                for parent in parents.iter() {
+                    code.push_str(format!("public {}, ", self.get_type(parent.clone())).as_str());
+                }
+                if parents.len() > 0 {
+                    code.pop();
+                    code.pop();
+                }
+                code.push_str("{\n");
                 let mut public_members = Vec::new();
                 let mut private_members = Vec::new();
                 for member in members {
@@ -337,15 +557,39 @@ impl Codegen {
                     }
                 }
                 code.push_str("public:\n");
-                code.push_str(&format!("{}() = default;\n", name));
+                code.push_str(&format!("{}(", name));
+                for parameter in parameters.iter() {
+                    code.push_str(&format!("{} {}, ", self.get_type(parameter.1.clone()), parameter.0.clone()));
+                }
+                if parameters.len() > 0 {
+                    code.pop();
+                    code.pop();
+                }
+                code.push_str(")");
+                if parameters.len() == 0 {
+                    code.push_str(" = default;");
+                } else {
+                    code.push_str(" : ");
+                    for (parameter_name, _) in parameters.iter() {
+                        code.push_str(&format!("__{}({}), ", parameter_name, parameter_name));
+                    }
+                    if parameters.len() > 0 {
+                        code.pop();
+                        code.pop();
+                    }
+                    code.push_str(" {}\n");
+                }
                 code.push_str(&format!("~{}() = default;\n", name));
 
                 for member in public_members {
                     code.push_str(&self.get_header_statement(member));
                 }
 
-                if private_members.len() > 0 {
+                if private_members.len() > 0 || parameters.len() > 0 {
                     code.push_str("private:\n");
+                    for parameter in parameters.iter() {
+                        code.push_str(&format!("{} __{};\n", self.get_type(parameter.1.clone()), parameter.0.clone()));
+                    }
                     for member in private_members {
                         code.push_str(&self.get_header_statement(member));
                     }
@@ -354,7 +598,7 @@ impl Codegen {
                 code.push_str("};\n");
                 self.current_class = None;
             }
-            Statement::GenericObject(name, _, generics, parent, members, _) => {
+            Statement::GenericObject(name, _, generics, parents, parameters, members, _) => {
                 self.current_class = Some(name.clone());
                 let mut generics_string = String::new();
                 for generic in generics {
@@ -373,7 +617,15 @@ impl Codegen {
                 generics_string.pop();
                 generics_string.pop();
                 code.push_str(&format!("template <{}>\n", generics_string));
-                code.push_str(&format!("class {} {}{{\n", name, if parent.is_some() { format!(": public {}", self.get_type(parent.unwrap())) } else { String::new() }));
+                code.push_str(&format!("class {} ", name));
+                for parent in parents.iter() {
+                    code.push_str(format!("public {}, ", self.get_type(parent.clone())).as_str());
+                }
+                if parents.len() > 0 {
+                    code.pop();
+                    code.pop();
+                }
+                code.push_str("{\n");
                 let mut public_members = Vec::new();
                 let mut private_members = Vec::new();
                 for member in members {
@@ -410,9 +662,6 @@ impl Codegen {
                 code.push_str(&format!("constexpr {} {} = {};\n", self.get_type(t), name, self.get_expression(value)));
             }
             Statement::Procedure(name, flags, args, return_type, _, _) => {
-                if self.current_class.is_none() {
-                    return String::new();
-                }
                 let mut args_string = String::new();
                 for arg in args {
                     args_string.push_str(&format!("{} {}, ", self.get_type(arg.1), arg.0));
@@ -422,11 +671,11 @@ impl Codegen {
                     args_string.pop();
                 }
                 if flags.contains(&AccessFlag::Virtual) {
-                    code.push_str(&format!("virtual {} {}({}) = 0;\n", self.get_type(return_type), name, args_string));
+                    code.push_str(&format!("virtual {} {}{}({}) = 0;\n", self.get_type(return_type), if self.current_class.is_some() { format!("{}::", self.current_class.clone().unwrap()) } else { String::new() }, name, args_string));
                 } else if flags.contains(&AccessFlag::Override) {
-                    code.push_str(&format!("virtual {} {}({}) override = 0;\n", self.get_type(return_type), name, args_string));
+                    code.push_str(&format!("virtual {} {}{}({}) override = 0;\n", self.get_type(return_type), if self.current_class.is_some() { format!("{}::", self.current_class.clone().unwrap()) } else { String::new() }, name, args_string));
                 } else {
-                    code.push_str(&format!("{} {}({});\n", self.get_type(return_type), name, args_string));
+                    code.push_str(&format!("{} {}{}({});\n", self.get_type(return_type), if self.current_class.is_some() { format!("{}::", self.current_class.clone().unwrap()) } else { String::new() }, name, args_string));
                 }
             }
             Statement::GenericProcedure(name, flags, generics, args, return_type, _, _) => {
@@ -454,12 +703,13 @@ impl Codegen {
                     args_string.pop();
                     args_string.pop();
                 }
+                code.push_str(&format!("template <{}>\n", generics_string));
                 if flags.contains(&AccessFlag::Virtual) {
-                    code.push_str(&format!("virtual {} {}<{}>({}) = 0;\n", self.get_type(return_type), name, generics_string, args_string));
+                    code.push_str(&format!("virtual {} {}{}({}) = 0;\n", self.get_type(return_type), if self.current_class.is_some() { format!("{}::", self.current_class.clone().unwrap()) } else { String::new() }, name, args_string));
                 } else if flags.contains(&AccessFlag::Override) {
-                    code.push_str(&format!("virtual {} {}<{}>({}) override = 0;\n", self.get_type(return_type), name, generics_string, args_string));
+                    code.push_str(&format!("virtual {} {}{}({}) override = 0;\n", self.get_type(return_type), if self.current_class.is_some() { format!("{}::", self.current_class.clone().unwrap()) } else { String::new() }, name, args_string));
                 } else {
-                    code.push_str(&format!("{} {}<{}>({});\n", self.get_type(return_type), name, generics_string, args_string));
+                    code.push_str(&format!("{} {}{}({});\n", self.get_type(return_type), if self.current_class.is_some() { format!("{}::", self.current_class.clone().unwrap()) } else { String::new() }, name, args_string));
                 }
             }
             _ => {}
@@ -484,6 +734,7 @@ impl Codegen {
         match t {
             Type::Unit(_) => "void".to_string(),
             Type::Int(_) => "int".to_string(),
+            Type::Char(_) => "char".to_string(),
             Type::Bool(_) => "bool".to_string(),
             Type::GenericParameter(name, _) => name,
             Type::Generic(name, _) => name,
@@ -591,7 +842,8 @@ impl Codegen {
                 expr.push_str(&self.get_expression(*right));
                 expr
             }
-            _ => "".to_string(),
+            Expression::Cpp(string, _) => string.replace("\\\"", "\""),
+            _ => panic!("unhandled expression {:?}", expr)
         }
     }
 }

@@ -1,6 +1,9 @@
 module Data.String
 
-import Data.List exposing (List)
-import Data.Char exposing (Char)
+import Data.List exposing List
 
-public alias String = [Char]
+trait Assignable[To] =
+    | 
+
+public object String(chars: [Char]) =
+    | of Assignable[cstring]

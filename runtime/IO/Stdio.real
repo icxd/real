@@ -1,0 +1,8 @@
+module IO.Stdio
+
+cpp "#include <iostream>"
+
+import Data.String exposing String
+
+public procedure println(msg: String) -> Unit =
+    cpp "std::cout << msg << \"\n\""

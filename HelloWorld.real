@@ -1,0 +1,8 @@
+module HelloWorld
+
+import Data.String exposing (String)
+import Data.List exposing (List)
+import IO.Stdio exposing (println)
+
+procedure Main(args: [String]) -> Unit =
+    println("Hello, World!")

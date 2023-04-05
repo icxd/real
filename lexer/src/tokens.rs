@@ -11,7 +11,7 @@ pub enum TokenKind {
     //   Types
     Unit,               // Unit (void)
     Int,                // Int (32-bit signed integer)
-    String,             // String (UTF-8 string)
+    Char,               // Char
     Bool,               // Bool (boolean)
 
     //   Objects
@@ -25,10 +25,14 @@ pub enum TokenKind {
     //   Functions
     Procedure,          // procedure (basically a function)
 
+    // Traits
+    Trait,              // trait (define a trait)
+    Of,                 // of (implement a trait)
+
     //   Module Handling
     Module,             // module (defines a module)
     Import,             // import (imports a module)
-    Exposing,           // exposing (exposes a module)
+    Exposing,           // exposing
     
     //   Descriptors
     External,           // external (used to define c++ bindings for a module or object)
@@ -37,11 +41,15 @@ pub enum TokenKind {
     Private,            // private (makes the object only accessible within the module)
     Virtual,            // virtual (makes the object virtual, meaning it can be overridden by a child class)
     Override,           // override (overrides a virtual object)
+    Unsafe,             // unsafe (allows you to write unsafe code blocks (not really blocks but whatever))
 
     //   Control Flow
     Match,              // match (pattern matching)
     With,               // with (pattern matching)
     Else,               // else (else statement)
+
+    //   I don't even know
+    Cpp,                // cpp
 
     // Punctuation
     OpenParenthesis,    // (
