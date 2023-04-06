@@ -1,8 +1,18 @@
 module HelloWorld
 
-import Data.String exposing (String)
-import Data.List exposing (List)
-import IO.Stdio exposing (println)
+// import Data.List exposing List
+// import Data.String exposing String
+// import Data.Optional exposing Optional
+import Data.Map exposing (Map)
 
-procedure Main(args: [String]) -> Unit =
-    println("Hello, World!")
+procedure Test() -> [[Int]] =
+    [[1, 2], [3, 4]]
+
+procedure ListTest() -> Int? =
+    [1, 2, 3, 4].length()
+
+procedure StringTest() -> Int =
+    "Hello World".length()
+
+procedure MapTest() -> Map[String, Int] =
+    { "a": 1, "b": 2 }

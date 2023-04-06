@@ -56,12 +56,14 @@ use lexer::{
 
     GenericParameter(String, Span),
     Generic(String, Span),
+    GenericType(Box<Type>, Vec<Type>, Span),
 
     DataEnum(String, Span),
     DataStruct(String, Span),
     Alias(String, Span),
     Object(String, Span),
 
+    Optional(Box<Type>, Span),
     Array(Box<Type>, Span),
 
     Function(Vec<Type>, Box<Type>, Span),
@@ -102,6 +104,25 @@ use lexer::{
     Binary(Box<Expression>, Box<Expression>, TokenKind, Span),
     Unsafe(Box<Expression>, Span),
     Cpp(String, Span),
+    List(Vec<Expression>, Span),
+    Map(Vec<(Expression, Expression)>, Span),
+}
+impl Expression {
+    pub fn get_type(&self) -> Type {
+        match self {
+            Expression::String(_, span) => Type::Unknown("String".to_string(), span.clone()),
+            Expression::Integer(_, span) => Type::Int(span.clone()),
+            Expression::List(items, span) => {
+                if items.len() == 0 {
+                    Type::Array(Box::new(Type::Unit(span.clone())), span.clone())
+                } else {
+                    let inner_type: Type = items[0].get_type();
+                    Type::Array(Box::new(inner_type), span.clone())
+                }
+            }
+            _ => unimplemented!("Expression::get_type()"),
+        }
+    }
 }
 
 impl Parser {
@@ -147,6 +168,7 @@ impl Parser {
             TokenKind::Object => self.parse_object(access_flags),
             TokenKind::Const => self.parse_const(access_flags),
             TokenKind::Procedure => self.parse_procedure(access_flags),
+            TokenKind::Trait => self.parse_trait(access_flags),
             TokenKind::Module => self.parse_module(),
             TokenKind::Import => self.parse_import(),
             _ => {
@@ -373,7 +395,13 @@ impl Parser {
             while self.current().kind == TokenKind::Pipe {
                 self.expect(TokenKind::Pipe);
                 let access_flags: Vec<AccessFlag> = self.parse_access_flags();
-                statements.push(self.parse_procedure(access_flags));
+                if self.current().kind == TokenKind::Procedure {
+                    statements.push(self.parse_procedure(access_flags));
+                } else if self.current().kind == TokenKind::Of {
+                    statements.push(self.parse_of());
+                } else {
+                    panic!("Expected Procedure or Of, but got {:?}", self.current().kind);
+                }
             }
             if self.current().kind == TokenKind::Newline {
                 self.expect(TokenKind::Newline);
@@ -487,6 +515,10 @@ impl Parser {
             panic!("Expected '=', block procedures are not yet supported");
         }
     }
+    fn parse_trait(&mut self, flags: Vec<AccessFlag>) -> Statement {
+        self.expect(TokenKind::Trait);
+        panic!()
+    }
     fn parse_module(&mut self) -> Statement {
         self.expect(TokenKind::Module);
         let span: Span = self.current().span;
@@ -526,6 +558,13 @@ impl Parser {
         } else {
             Statement::Import(expr, span)
         }
+    }
+    fn parse_of(&mut self) -> Statement {
+        let span: Span = self.current().span;
+        self.expect(TokenKind::Of);
+        let t: Type = self.parse_type();
+        self.expect(TokenKind::Newline);
+        Statement::Of(t, span)
     }
 
     fn parse_expression(&mut self) -> Expression {
@@ -669,6 +708,35 @@ impl Parser {
                 let cpp: String = self.expect(TokenKind::StringLiteral).literal.unwrap(); 
                 Expression::Cpp(cpp, span)
             }
+            TokenKind::OpenBracket => {
+                let span: Span = self.current().span;
+                self.expect(TokenKind::OpenBracket);
+                let mut items: Vec<Expression> = vec![];
+                while self.current().kind != TokenKind::CloseBracket {
+                    items.push(self.parse_expression());
+                    if self.current().kind == TokenKind::Comma {
+                        self.expect(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::CloseBracket);
+                Expression::List(items, span)
+            }
+            TokenKind::OpenBrace => {
+                let span: Span = self.current().span;
+                self.expect(TokenKind::OpenBrace);
+                let mut map: Vec<(Expression, Expression)> = vec![];
+                while self.current().kind != TokenKind::CloseBrace {
+                    let key: Expression = self.parse_expression();
+                    self.expect(TokenKind::Colon);
+                    let value: Expression = self.parse_expression();
+                    map.push((key, value));
+                    if self.current().kind == TokenKind::Comma {
+                        self.expect(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::CloseBrace);
+                Expression::Map(map, span)
+            }
             _ => panic!("unexpected token: {:?}", self.current().kind)
         }
     }
@@ -700,55 +768,55 @@ impl Parser {
     }
     fn parse_type(&mut self) -> Type {
         let span: Span = self.current().span;
-        match self.current().kind {
+        let base_t: Type = match self.current().kind {
             TokenKind::Identifier => {
                 let current: String = self.current().literal.unwrap();
                 if self.data_enums.contains_key(&current) {
                     let identifier: String = self.expect(TokenKind::Identifier).literal.unwrap();
-                    Type::DataEnum(identifier, span)
+                    Type::DataEnum(identifier, span.clone())
                 } else if self.data_structs.contains_key(&current) {
                     let identifier: String = self.expect(TokenKind::Identifier).literal.unwrap();
-                    Type::DataStruct(identifier, span)
+                    Type::DataStruct(identifier, span.clone())
                 } else if self.aliases.contains_key(&current) {
                     let identifier: String = self.expect(TokenKind::Identifier).literal.unwrap();
-                    Type::Alias(identifier, span)
+                    Type::Alias(identifier, span.clone())
                 } else if self.objects.contains_key(&current) {
                     let identifier: String = self.expect(TokenKind::Identifier).literal.unwrap();
-                    Type::Object(identifier, span)
+                    Type::Object(identifier, span.clone())
                 } else {
                     for t in self.current_generic_parameters.clone() {
                         if let Type::GenericParameter(name, _) = t.clone() {
                             if name == current {
                                 self.advance();
-                                return Type::Generic(name, span);
+                                return Type::Generic(name, span.clone());
                             }
                         }
                     }
                     self.advance();
-                    Type::Unknown(current, span)
+                    Type::Unknown(current, span.clone())
                 }
             }
             TokenKind::Unit => {
                 self.expect(TokenKind::Unit);
-                Type::Unit(span)
+                Type::Unit(span.clone())
             }
             TokenKind::Int => {
                 self.expect(TokenKind::Int);
-                Type::Int(span)
+                Type::Int(span.clone())
             }
             TokenKind::Char => {
                 self.expect(TokenKind::Char);
-                Type::Char(span)
+                Type::Char(span.clone())
             }
             TokenKind::Bool => {
                 self.expect(TokenKind::Bool);
-                Type::Bool(span)
+                Type::Bool(span.clone())
             }
             TokenKind::OpenBracket => {
                 self.expect(TokenKind::OpenBracket);
                 let t: Type = self.parse_type();
                 self.expect(TokenKind::CloseBracket);
-                Type::Array(Box::new(t), span)
+                Type::Array(Box::new(t), span.clone())
             }
             TokenKind::OpenParenthesis => {
                 self.expect(TokenKind::OpenParenthesis);
@@ -762,10 +830,27 @@ impl Parser {
                 self.expect(TokenKind::CloseParenthesis);
                 self.expect(TokenKind::Arrow);
                 let t: Type = self.parse_type();
-                Type::Function(types, Box::new(t), span)
+                Type::Function(types, Box::new(t), span.clone())
             }
             _ => panic!("unexpected type: {:?}", self.current().kind)
+        };
+        if self.current().kind == TokenKind::OpenBracket {
+            self.expect(TokenKind::OpenBracket);
+            let mut inner_types: Vec<Type> = vec![];
+            while self.current().kind != TokenKind::CloseBracket {
+                inner_types.push(self.parse_type());
+                if self.current().kind == TokenKind::Comma {
+                    self.expect(TokenKind::Comma);
+                }
+            }
+            self.expect(TokenKind::CloseBracket);
+            return Type::GenericType(Box::new(base_t), inner_types, span.clone());
         }
+        if self.current().kind == TokenKind::QuestionMark {
+            self.expect(TokenKind::QuestionMark);
+            return Type::Optional(Box::new(base_t), span.clone());
+        }
+        base_t
     }
     fn parse_enum_variant(&mut self) -> EnumVarient {
         let span: Span = self.current().span;

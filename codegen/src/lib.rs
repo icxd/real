@@ -55,6 +55,8 @@ impl Codegen {
         let mut imports: String = String::new();
         let mut namespaces: String = String::new();
         let mut usings: String = String::new();
+        imports.push_str("#include <Prelude.h>\n");
+        namespaces.push_str("using namespace Prelude;\n");
         for statement in self.statements.clone() {
             match statement {
                 Statement::Import(path, _) => {
@@ -150,7 +152,6 @@ impl Codegen {
             }
         }
         code.push_str(&imports);
-        code.push_str(&namespaces);
 
         let mut namespace_count = 0;
         if let Statement::Module(path, _) = self.statements[0].clone() {
@@ -164,6 +165,7 @@ impl Codegen {
             panic!("first statement must be a module.")
         }
 
+        code.push_str(&namespaces);
         code.push_str(&usings);
 
         for statement in self.statements.clone() {
@@ -184,6 +186,8 @@ impl Codegen {
         let mut imports: String = String::new();
         let mut namespaces: String = String::new();
         let mut usings: String = String::new();
+        imports.push_str("#include <Prelude.h>\n");
+        namespaces.push_str("using namespace Prelude;\n");
         for statement in self.statements.clone() {
             match statement {
                 Statement::Import(path, _) => {
@@ -279,7 +283,6 @@ impl Codegen {
             }
         }
         code.push_str(&imports);
-        code.push_str(&namespaces);
 
         let mut namespace_count = 0;
         if let Statement::Module(path, _) = self.statements[0].clone() {
@@ -290,6 +293,7 @@ impl Codegen {
                 namespace_count += 1;
             }
         }
+        code.push_str(&namespaces);
         code.push_str(&usings);
 
         for statement in self.statements.clone() {
@@ -542,8 +546,9 @@ impl Codegen {
                     code.pop();
                 }
                 code.push_str("{\n");
-                let mut public_members = Vec::new();
-                let mut private_members = Vec::new();
+                let mut public_members: Vec<Statement> = Vec::new();
+                let mut private_members: Vec<Statement> = Vec::new();
+                let mut traits: Vec<Statement> = Vec::new();
                 for member in members {
                     match member {
                         Statement::Procedure(_, ref flags, _, _, _, _) => {
@@ -552,6 +557,9 @@ impl Codegen {
                             } else {
                                 private_members.push(member);
                             }
+                        }
+                        Statement::Of(_, _) => {
+                            traits.push(member);
                         }
                         _ => panic!("Invalid member"),
                     }
@@ -583,6 +591,10 @@ impl Codegen {
 
                 for member in public_members {
                     code.push_str(&self.get_header_statement(member));
+                }
+
+                for trait_ in traits {
+                    code.push_str(&self.get_header_statement(trait_));
                 }
 
                 if private_members.len() > 0 || parameters.len() > 0 {
@@ -712,6 +724,9 @@ impl Codegen {
                     code.push_str(&format!("{} {}{}({});\n", self.get_type(return_type), if self.current_class.is_some() { format!("{}::", self.current_class.clone().unwrap()) } else { String::new() }, name, args_string));
                 }
             }
+            Statement::Of(trait_type, _) => {
+                code.push_str(&self.get_type(trait_type));
+            }
             _ => {}
         }
         code
@@ -738,13 +753,31 @@ impl Codegen {
             Type::Bool(_) => "bool".to_string(),
             Type::GenericParameter(name, _) => name,
             Type::Generic(name, _) => name,
+            Type::GenericType(base_t, inner_types, _) => {
+                let mut inner_types_string = String::new();
+                for inner_type in inner_types {
+                    inner_types_string.push_str(&format!("{}, ", self.get_type(inner_type.clone())));
+                }
+                if inner_types_string.len() > 0 {
+                    inner_types_string.pop();
+                    inner_types_string.pop();
+                }
+                format!("{}<{}>", self.get_type(*base_t), inner_types_string)
+            }
             Type::DataEnum(name, _) => name,
             Type::DataStruct(name, _) => name,
             Type::Alias(name, _) => name,
             Type::Object(name, _) => name,
+            Type::Optional(inner, _) => format!("Optional<{}>", self.get_type(*inner)),
             Type::Array(inner, _) => format!("List<{}>", self.get_type(*inner)),
             Type::Function(types, inner, _) => format!("Function<{}({})>", self.get_type(*inner), types.iter().map(|x| self.get_type(x.clone())).collect::<Vec<String>>().join(", ")),
-            Type::Unknown(name, _) => name,
+            Type::Unknown(name, _) => {
+                if name == "cstring" {
+                    "const char*".to_string()
+                } else {
+                    name
+                }
+            }
         }
     }
 
@@ -752,7 +785,7 @@ impl Codegen {
         match expr {
             Expression::Variable(id, _) => id,
             Expression::Integer(value, _) => value.to_string(),
-            Expression::String(value, _) => format!("\"{}\"", value),
+            Expression::String(value, _) => format!("String::from_cstr(\"{}\")", value),
             Expression::Member(expression, member, _) => {
                 if let Expression::Variable(id, _) = *expression.clone() {
                     if let Expression::Call(callee, args, _) = *member.clone() {
@@ -843,6 +876,18 @@ impl Codegen {
                 expr
             }
             Expression::Cpp(string, _) => string.replace("\\\"", "\""),
+            Expression::List(items, _) => format!("List<{}>::from_array(new {}[{}]{{ {} }}, {})", self.get_type(items[0].get_type()), self.get_type(items[0].get_type()), items.len(), items.iter().map(|x| self.get_expression(x.clone())).collect::<Vec<String>>().join(", "), items.len()),
+            Expression::Map(map, _) => {
+                let mut keys: Vec<Expression> = vec![];
+                let mut values: Vec<Expression> = vec![];
+                for (key, value) in map {
+                    keys.push(key);
+                    values.push(value);
+                }
+                let key_string = format!("List<{}>::from_array(new {}[{}]{{ {} }}, {})", self.get_type(keys[0].get_type()), self.get_type(keys[0].get_type()), keys.len(), keys.iter().map(|x| self.get_expression(x.clone())).collect::<Vec<String>>().join(", "), keys.len());
+                let value_string = format!("List<{}>::from_array(new {}[{}]{{ {} }}, {})", self.get_type(values[0].get_type()), self.get_type(values[0].get_type()), values.len(), values.iter().map(|x| self.get_expression(x.clone())).collect::<Vec<String>>().join(", "), values.len());
+                format!("Map<{}, {}>::from_list({}, {})", self.get_type(keys[0].get_type()), self.get_type(values[0].get_type()), key_string, value_string)
+            }
             _ => panic!("unhandled expression {:?}", expr)
         }
     }

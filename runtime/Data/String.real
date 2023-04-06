@@ -1,9 +1,6 @@
 module Data.String
 
-import Data.List exposing List
+public object String(str: cstring) =
+    | public procedure c_str() -> cstring =
+        self.str
 
-trait Assignable[To] =
-    | 
-
-public object String(chars: [Char]) =
-    | of Assignable[cstring]

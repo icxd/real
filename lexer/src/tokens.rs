@@ -63,6 +63,7 @@ pub enum TokenKind {
     Dot,                // .
     Comma,              // ,
     Pipe,               // |
+    QuestionMark,       // ?
     Arrow,              // ->
 
     // Operators
