@@ -1,6 +1,0 @@
-module Data.String
-
-public object String(str: cstring) =
-    | public procedure c_str() -> cstring =
-        self.str
-

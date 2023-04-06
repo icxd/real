@@ -1,0 +1,123 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "real",
+	"patterns": [
+		{ "include": "#comments" },
+		{ "include": "#literals" },
+		{ "include": "#keywords" },
+		{ "include": "#types" },
+		{ "include": "#constants" },
+		{ "include": "#functions" },
+		{ "include": "#variables" },
+		{ "include": "#operators" },
+		{ "include": "#punctuation" },
+		{ "include": "#annotation" }
+	],
+	"repository": {
+		"comments": {
+			"patterns": [{
+				"name": "comment.line.real",
+				"match": "//.*$"
+			}, {
+				"name": "comment.block.real",
+				"begin": "/\\*",
+				"end": "\\*/"
+			}]
+		},
+		"literals": {
+			"patterns": [{
+				"name": "constant.numeric.real",
+				"match": "\\b(0x[0-9a-fA-F]+|0b[01]+|0o[0-7]+|[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?)\\b"
+			}, {
+				"name": "constant.character.real",
+				"match": "'.'"
+			}, {
+				"name": "string.quoted.double.real",
+				"begin": "\"",
+				"end": "\"",
+				"patterns": [{
+					"name": "constant.character.escape.real",
+					"match": "\\\\."
+				}]
+			}, {
+				"name": "string.quoted.single.real",
+				"begin": "'",
+				"end": "'",
+				"patterns": [{
+					"name": "constant.character.escape.real",
+					"match": "\\\\."
+				}]
+			}, {
+				"name": "entity.name.class.real",
+				"match": "\\b([A-Z][a-zA-Z0-9_]*)\\s*"
+			}]
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.other.real",
+				"match": "\\b(module|import|data|alias|object|procedure|const|exposing|cpp|of|trait)\\b"
+			}, {
+				"name": "keyword.control.real",
+				"match": "\\b(match|else|with)\\b"
+			}, {
+				"name": "keyword.operator.real",
+				"match": "\\b(let|as|unsafe)\\b"
+			}, {
+				"name": "variable.parameter.real",
+				"match": "\\b(self|super)\\b"
+			}]
+		},
+		"types": {
+			"patterns": [{
+				"name": "storage.type.real",
+				"match": "\\b(string|cstring|int|void|bool|char|usize)\\b"
+			}, {
+				"name": "storage.modifier.real",
+				"match": "\\b(external|internal|public|private|virtual|override)\\b"
+			}]
+		},
+		"constants": {
+			"patterns": [{
+				"name": "constant.language.real",
+				"match": "\\b(true|false|null)\\b"
+			}]
+		},
+		"functions": {
+			"patterns": [{
+				"name": "entity.name.function.real",
+				"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\("
+			}]
+		},
+		"variables": {
+			"patterns": [{
+				"name": "variable.other.real",
+				"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b"
+			}]
+		},
+		"operators": {
+			"patterns": [{
+				"name": "keyword.operator.real",
+				"match": "\\+|\\-|\\*|\\/|\\%|\\&|\\||\\^|\\~|\\!|\\=|\\<|\\>|\\?|\\:|\\,|\\;|\\."
+			}]
+		},
+		"punctuation": {
+			"patterns": [{
+				"name": "punctuation.definition.real",
+				"match": "\\(|\\)|\\[|\\]|\\{|\\}|\\.|\\,|\\;"
+			}]
+		},
+		"annotation": {
+			"patterns": [{
+				"name": "entity.name.annotation.real",
+				"match": "@([a-zA-Z_][a-zA-Z0-9_]*)"
+			}, {
+				"name": "entity.name.annotation.real",
+				"match": "@([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\("
+			}, {
+				"name": "entity.name.annotation.real",
+				"match": "@([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\{"
+			}]
+		}
+	},
+	"scopeName": "main.real"
+}
